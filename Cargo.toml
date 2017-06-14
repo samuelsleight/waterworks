@@ -1,0 +1,5 @@
+[package]
+name = "pipeline"
+version = "0.1.0"
+authors = ["Samuel Sleight <samuel.sleight@gmail.com>"]
+
