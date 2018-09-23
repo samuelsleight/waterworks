@@ -1,3 +1,21 @@
+#[derive(Debug)]
+pub enum Err<E> {
+    Cancelled,
+    Err(E)
+}
+
+#[derive(Debug)]
+pub enum Continue {
+    Continue,
+    Cancel
+}
+
+impl From<()> for Continue {
+    fn from(_: ()) -> Continue {
+        Continue::Continue
+    }
+}
+
 pub trait Stage<Error> {
     type Input;
     type Output;
@@ -9,13 +27,14 @@ pub trait RunPipeline<Error> {
     type Start;
     type End;
 
-    fn run(self, input: Self::Start) -> Result<Self::End, Error>;
+    fn run(self, input: Self::Start) -> Result<Self::End, Err<Error>>;
 }
 
-pub trait Pipeline<Error, S, F>: RunPipeline<Error>
+pub trait Pipeline<Error, S, FR, F>: RunPipeline<Error>
     where
         S: Stage<Error, Input=Self::End>,
-        F: FnOnce(&S::Output) {
+        FR: Into<Continue>,
+        F: FnOnce(&S::Output) -> FR {
 
     type AndThen;
 
@@ -33,12 +52,14 @@ pub struct PipelineEnd<S, F> {
     callback: F
 }
 
-impl<S, F, Error, T, G> Pipeline<Error, T, G> for PipelineEnd<S, F> 
+impl<S, FR, F, Error, T, GR, G> Pipeline<Error, T, GR, G> for PipelineEnd<S, F> 
     where 
-        S: Stage<Error>, 
-        F: FnOnce(&S::Output),
+        S: Stage<Error>,
+        FR: Into<Continue>,
+        F: FnOnce(&S::Output) -> FR,
         T: Stage<Error, Input=S::Output>,
-        G: FnOnce(&T::Output) {
+        GR: Into<Continue>,
+        G: FnOnce(&T::Output) -> GR {
 
     type AndThen = PipelineStage<S, F, PipelineEnd<T, G>>;
 
@@ -54,13 +75,15 @@ impl<S, F, Error, T, G> Pipeline<Error, T, G> for PipelineEnd<S, F>
     }
 }
 
-impl<S, F, P, Error, T, G> Pipeline<Error, T, G> for PipelineStage<S, F, P> 
+impl<S, FR, F, P, Error, T, GR, G> Pipeline<Error, T, GR, G> for PipelineStage<S, F, P> 
     where 
         S: Stage<Error, Output=P::Start>, 
-        F: FnOnce(&S::Output), 
-        P: Pipeline<Error, T, G>,
+        FR: Into<Continue>,
+        F: FnOnce(&S::Output) -> FR, 
+        P: Pipeline<Error, T, GR, G>,
         T: Stage<Error, Input=P::End>,
-        G: FnOnce(&T::Output) {
+        GR: Into<Continue>,
+        G: FnOnce(&T::Output) -> GR {
 
     type AndThen = PipelineStage<S, F, P::AndThen>;
 
@@ -73,51 +96,54 @@ impl<S, F, P, Error, T, G> Pipeline<Error, T, G> for PipelineStage<S, F, P>
     }
 }
 
-impl<S, F, Error> RunPipeline<Error> for PipelineEnd<S, F>
+impl<S, FR, F, Error> RunPipeline<Error> for PipelineEnd<S, F>
     where
         S: Stage<Error>,
-        F: FnOnce(&S::Output) {
+        FR: Into<Continue>,
+        F: FnOnce(&S::Output) -> FR {
 
     type Start = S::Input;
     type End = S::Output;
 
-    fn run(self, input: Self::Start) -> Result<Self::End, Error> {
+    fn run(self, input: Self::Start) -> Result<Self::End, Err<Error>> {
         match self.stage.run(input) {
-            Ok(output) => {
-                (self.callback)(&output);
-                Ok(output)
+            Ok(output) => match (self.callback)(&output).into() {
+                Continue::Continue => Ok(output),
+                Continue::Cancel => Err(Err::Cancelled)
             },
 
-            err => err
+            Err(err) => Err(Err::Err(err))
         }
     }
 }
 
-impl<S, F, Error, P> RunPipeline<Error> for PipelineStage<S, F, P>
+impl<S, FR, F, Error, P> RunPipeline<Error> for PipelineStage<S, F, P>
     where
         S: Stage<Error>,
-        F: FnOnce(&S::Output),
+        FR: Into<Continue>,
+        F: FnOnce(&S::Output) -> FR,
         P: RunPipeline<Error, Start=S::Output> {
 
     type Start = S::Input;
     type End = P::End;
 
-    fn run(self, input: Self::Start) -> Result<Self::End, Error> {
+    fn run(self, input: Self::Start) -> Result<Self::End, Err<Error>> {
         match self.stage.run(input) {
-            Ok(output) => {
-                (self.callback)(&output);
-                self.next.run(output)
+            Ok(output) => match (self.callback)(&output).into() {
+                Continue::Continue => self.next.run(output),
+                Continue::Cancel => Err(Err::Cancelled)
             },
 
-            Err(err) => Err(err),
+            Err(err) => Err(Err::Err(err)),
         }
     }
 }
 
-pub fn pipeline<S, F, Error>(stage: S, callback: F) -> PipelineEnd<S, F>
+pub fn pipeline<S, FR, F, Error>(stage: S, callback: F) -> PipelineEnd<S, F>
     where
         S: Stage<Error>,
-        F: FnOnce(&S::Output) {
+        FR: Into<Continue>,
+        F: FnOnce(&S::Output) -> FR {
 
     PipelineEnd {
         stage: stage,
@@ -153,8 +179,15 @@ mod test {
     }
 
     #[test]
-    fn test() {
+    fn run_test() {
         println!("{:?}", pipeline(StageA, |v| for i in v { println!("{}", i)})
+            .and_then(StageB, |_| {})
+            .run(()))
+    }
+
+    #[test]
+    fn cancel_test() {
+        println!("{:?}", pipeline(StageA, |_| Continue::Cancel)
             .and_then(StageB, |_| {})
             .run(()))
     }
