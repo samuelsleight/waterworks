@@ -68,8 +68,8 @@ impl<S, FR, F, Error, T, GR, G> Pipeline<Error, T, GR, G> for PipelineEnd<S, F>
             stage: self.stage,
             callback: self.callback,
             next: PipelineEnd {
-                stage: stage,
-                callback: callback,
+                stage,
+                callback,
             }
         }
     }
@@ -146,8 +146,8 @@ pub fn pipeline<S, FR, F, Error>(stage: S, callback: F) -> PipelineEnd<S, F>
         F: FnOnce(&S::Output) -> FR {
 
     PipelineEnd {
-        stage: stage,
-        callback: callback
+        stage,
+        callback
     }
 }
 
