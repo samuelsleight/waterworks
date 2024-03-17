@@ -17,7 +17,7 @@ impl<S, F> PipelineEnd<S, F> {
     }
 }
 
-impl<PS, PF, PR, Error> Pipeline<Error> for PipelineEnd<PS, PF>
+impl<PS, PF, PR, Error> Extend<Error> for PipelineEnd<PS, PF>
 where
     PS: Stage<Error>,
     PF: FnOnce(&PS::Output) -> PR,
@@ -27,7 +27,7 @@ where
         self,
         stage: S,
         callback: F,
-    ) -> impl Pipeline<Error, Start = Self::Start, End = S::Output>
+    ) -> impl Extend<Error, Start = Self::Start, End = S::Output>
     where
         S: Stage<Error, Input = Self::End>,
         F: FnOnce(&S::Output) -> R,
@@ -41,18 +41,18 @@ where
     }
 }
 
-impl<PS, PF, PR, Next, Error> Pipeline<Error> for PipelineStage<PS, PF, Next>
+impl<PS, PF, PR, Next, Error> Extend<Error> for PipelineStage<PS, PF, Next>
 where
     PS: Stage<Error>,
     PF: FnOnce(&PS::Output) -> PR,
     PR: Into<Continue>,
-    Next: Pipeline<Error, Start = PS::Output>,
+    Next: Extend<Error, Start = PS::Output>,
 {
     fn and_then<S, F, R>(
         self,
         stage: S,
         callback: F,
-    ) -> impl Pipeline<Error, Start = Self::Start, End = S::Output>
+    ) -> impl Extend<Error, Start = Self::Start, End = S::Output>
     where
         S: Stage<Error, Input = Self::End>,
         F: FnOnce(&S::Output) -> R,
@@ -66,7 +66,7 @@ where
     }
 }
 
-impl<PS, PF, PR, Error> RunPipeline<Error> for PipelineEnd<PS, PF>
+impl<PS, PF, PR, Error> Pipeline<Error> for PipelineEnd<PS, PF>
 where
     PS: Stage<Error>,
     PF: FnOnce(&PS::Output) -> PR,
@@ -87,12 +87,12 @@ where
     }
 }
 
-impl<PS, PF, PR, Error, Next> RunPipeline<Error> for PipelineStage<PS, PF, Next>
+impl<PS, PF, PR, Error, Next> Pipeline<Error> for PipelineStage<PS, PF, Next>
 where
     PS: Stage<Error>,
     PF: FnOnce(&PS::Output) -> PR,
     PR: Into<Continue>,
-    Next: RunPipeline<Error, Start = PS::Output>,
+    Next: Pipeline<Error, Start = PS::Output>,
 {
     type Start = PS::Input;
     type End = Next::End;

@@ -26,19 +26,19 @@ pub trait Stage<Error> {
     fn run(self, input: Self::Input) -> Result<Self::Output, Error>;
 }
 
-pub trait RunPipeline<Error> {
+pub trait Pipeline<Error> {
     type Start;
     type End;
 
     fn run(self, input: Self::Start) -> PipelineResult<Self::End, Error>;
 }
 
-pub trait Pipeline<Error>: RunPipeline<Error> {
+pub trait Extend<Error>: Pipeline<Error> {
     fn and_then<S, F, R>(
         self,
         stage: S,
         callback: F,
-    ) -> impl Pipeline<Error, Start = Self::Start, End = S::Output>
+    ) -> impl Extend<Error, Start = Self::Start, End = S::Output>
     where
         S: Stage<Error, Input = Self::End>,
         F: FnOnce(&S::Output) -> R,
@@ -48,7 +48,7 @@ pub trait Pipeline<Error>: RunPipeline<Error> {
 pub fn pipeline<S, FR, F, Error>(
     stage: S,
     callback: F,
-) -> impl Pipeline<Error, Start = S::Input, End = S::Output>
+) -> impl Extend<Error, Start = S::Input, End = S::Output>
 where
     S: Stage<Error>,
     FR: Into<Continue>,
