@@ -3,7 +3,7 @@ mod test;
 
 /// A `PipelineResult` is the type returned when a pipeline is ran,
 /// i.e., by calling the [`run`][Pipeline::run] method on the [`Pipeline`] trait
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PipelineResult<T, E> {
     /// The pipeline ran successfully to the end, returning the [`Output`][Stage::Output]
     /// of its final [`Stage`]
@@ -26,7 +26,7 @@ pub enum PipelineResult<T, E> {
 ///
 /// In the minimal case of an empty callback or a callback that just
 /// logs the value, an implementation of [`From<()>`][Continue::from] exists for convenience
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Continue {
     /// Continue running this pipleine as normal, passing this stage's [`Output`][Stage::Output]
     /// to the next stage
