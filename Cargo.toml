@@ -1,6 +1,12 @@
 [package]
 name = "waterworks"
-version = "0.1.0"
-authors = ["Samuel Sleight <samuel.sleight@gmail.com>"]
+version = "1.0.0-rc.1"
+authors = ["Samuel Sleight <samuel@sleig.ht>"]
 edition = "2021"
+rust-version = "1.75"
+description = "A small library for chaining together computation stage into a pipeline"
+readme = "README.md"
+repository = "https://github.com/samuelsleight/waterworks"
 license = "Apache-2.0"
+keywords = ["pipeline", "functional"]
+categories = ["no-std"]
