@@ -1,6 +1,6 @@
 [package]
 name = "waterworks"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 authors = ["Samuel Sleight <samuel@sleig.ht>"]
 edition = "2021"
 rust-version = "1.75"
